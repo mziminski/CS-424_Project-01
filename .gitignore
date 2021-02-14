@@ -40,3 +40,6 @@ vignettes/*.pdf
 
 # macOS filesystem files
 .DS_Store
+
+# RSConect
+rsconnect
