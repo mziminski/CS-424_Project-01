@@ -1,11 +1,6 @@
 
 # libraries to include
-install.packages("usmap")
-install.packages("shinythemes")
-install.packages('rsconnect')
-library(rsconnect)
 library(shiny)
-library(shinythemes)
 library(shinydashboard)
 library(reshape2)
 library(leaflet)
@@ -17,7 +12,6 @@ options(scipen = 999)
 
 # Interested in rows: TYPE OF PRODUCER,ENERGY SOURCE equal to Total Electric Power Industry,Total
 # [You] should convert the STATE, TYPE OF PRODUCER, and ENERGY SOURCE to categorical values
-setwd("/Users/mziminski/Developer/School Projects/cs424/CS-424_Project-01/")
 data <- read.csv(file = "annual_generation_state.csv", TRUE, sep = ",")
 # Get header column names
 # colnames(data)
@@ -56,12 +50,11 @@ levels(data$ENERGY_SOURCE) <- c("Coal", "Geo", "Hydro", "Gas", "Nuclear", "Petro
 # view levels
 # levels(data$ENERGY_SOURCE)
 
-# categories
+# Make lists for select menus to use
 categories <- c("All", "Coal", "Geo", "Hydro", "Gas", "Nuclear", "Petrol", "Solar", "Wind", "Wood")
 states <- setNames(state.abb, state.name)
 states["US-TOTAL"] <- "US-TOTAL"
 states["Washington DC"] <-  "DC"
-
 states <- append(states, setNames("_All", "All"))
 states <- sort(states)
 years <- c(1990:2019)
@@ -72,14 +65,15 @@ data$TYPE_OF_PRODUCER <- NULL
 
 # levels(All$ENERGY_SOURCE)
 
+# Convert data and percents from long to wide format
 data_l_to_w <- dcast(data, STATE ~ YEAR + ENERGY_SOURCE, value.var = "GENERATION", drop = FALSE)
 percents_l_to_w <- dcast(data, STATE ~ YEAR + ENERGY_SOURCE, value.var = "GENERATION", drop = FALSE)
 
-#Remove first empty row of dataset
+#Remove first empty row of datasets
 data_l_to_w <- data_l_to_w[-1,]
 percents_l_to_w <- percents_l_to_w[-1,]
 
-
+# set vars for following loop
 total_index <- 9
 denominator <- data_l_to_w[,total_index]
 
@@ -93,29 +87,26 @@ for (i in 2:ncol(data_l_to_w)) {
   percents_l_to_w[,i] <- round((data_l_to_w[,i] / denominator), 2) * 100.0
 }
 
+# convert data and percents wide format to long format
 data_w_to_L <- melt(data_l_to_w, id.vars=c("STATE"))
 percents_w_to_L <- melt(percents_l_to_w, id.vars=c("STATE"))
-
+# split the variable column into two columns (removes the factor/level)
 data_w_to_L$variable <- data.frame(do.call("rbind", strsplit(as.character(data_w_to_L$variable), "_", fixed = TRUE)))
 percents_w_to_L$variable <- data.frame(do.call("rbind", strsplit(as.character(percents_w_to_L$variable), "_", fixed = TRUE)))
-
+# set the year column as an integer
 data_w_to_L$variable$X1 <- as.integer(data_w_to_L$variable$X1)
 percents_w_to_L$variable$X1 <- as.integer(percents_w_to_L$variable$X1)
-
+# set the energy source column as a factor
 data_w_to_L$variable$X2 <- as.factor(data_w_to_L$variable$X2)
 percents_w_to_L$variable$X2 <- as.factor(percents_w_to_L$variable$X2)
 
-# Create set of check boxes, one for each energy source, plus 'all' (where all is the default selection) allowing the user to filter which energy sources / lines are shown in the line graphs.
 
-# Set the color for each energy source should be consistent across all the visualizations in your interface
-
-# Create an 'about page' in your app with appropriate credits (where the data is from, who wrote the app, when, etc.)
-
-# Put them together into a dashboardPage
 #Create a custom color scale
 myColors <- c("#88CCEE", "#CC6677", "#DDCC77", "#117733", "#332288", "#AA4499", 
               "#44AA99", "#999933", "#882255", "#661100")
+names(myColors) <- levels(factor(c(levels(data_w_to_L$variable$X2), levels(data_w_to_L$variable$X2))))
 
+# Build the body of the shiny app dashboard
 body <- dashboardBody(
   tabItems(
     # First tab content
@@ -156,7 +147,7 @@ body <- dashboardBody(
     tabItem(tabName = "p2",
             fluidRow(
               tabBox(
-                title = "Region 1", height= "300px", width="auto", id="tab",
+                title = "Region 1", height= "100%", width="auto", id="tab",
                 # The id lets us use input$tabset1 on the server to find the current tab
                 tabPanel("Amounts",
                          column(6, plotOutput("compR1_plot1")),
@@ -168,19 +159,23 @@ body <- dashboardBody(
                          column(6, plotOutput("compR1_plot4"))
                 ),
                 tabPanel("Table",
-                         column(6, DT::dataTableOutput("compR1_dt1")),
-                         style="height:300",
-                         column(6, DT::dataTableOutput("compR1_dt2")),
-                         style="height:300"
+                         column(6, 
+                                h5("Energy Production in Amounts"),
+                                DT::dataTableOutput("compR1_dt1"),
+                                style="height:60%"),
+                         column(6, 
+                                h5("Energy Production in Percents"),
+                                DT::dataTableOutput("compR1_dt2"),
+                                style="height:60%")
                          
                 )
-              ), style="height:300px;"
+              ), style="height:40%;"
               
             ),
             br(),
             fluidRow(
               tabBox(
-                title = "Region 2", height= "300px", width="auto", id="tab",
+                title = "Region 2", height= "100%", width="auto", id="tab",
                 # The id lets us use input$tabset1 on the server to find the current tab
                 tabPanel("Amounts",
                          column(6,plotOutput("compR2_plot1")),
@@ -191,11 +186,17 @@ body <- dashboardBody(
                          column(6, plotOutput("compR2_plot4"))
                 ),
                 tabPanel("Table",
-                         column(6, DT::dataTableOutput("compR2_dt1")),
-                         column(6, DT::dataTableOutput("compR2_dt2"))
+                         column(6, 
+                                h5("Energy Production in Amounts"),
+                                DT::dataTableOutput("compR2_dt1"),
+                                style="height:60%"),
+                         column(6, 
+                                h5("Energy Production in Percents"),
+                                DT::dataTableOutput("compR2_dt2"),
+                                style="height:60%")
                 )
               )
-            ), style="height:300px;"
+            ), style="height:40%;"
     ),
     
     # Third tab content
@@ -216,7 +217,7 @@ body <- dashboardBody(
               hr(),
               p("The original data is from https://www.eia.gov/electricity/data/state/ but my Professor (Dr. Andy Johnson) made it into a CSV file."),
               p("The creator of this app is me (Matt Ziminski), I am currently taking CS 424 with with Dr. Andy Johnson."),
-              p("This is 1 of 3 projects done for CS 424, and it was worked on from January 30, 2021 to February 13, 2021."),
+              p("This is 1 of 3 projects done for CS 424, and it was worked on from January 30, 2021 to February 14, 2021."),
             ), style="padding-left:2rem;"
     )
   )
@@ -224,6 +225,7 @@ body <- dashboardBody(
 
 ui = dashboardPage(
   dashboardHeader(title = "CS 424 - Project 1"),
+  # Create the desired sidebar loyout
   dashboardSidebar(
     sidebarMenu(
       menuItem("Part 1", tabName = "p1"),
@@ -291,10 +293,13 @@ ui = dashboardPage(
   body
 )
 
+# Here lies the code that handles the interactivity of the shiny app
 server = function(input, output) {
   
+  # Render the 1st plot in part 1
   output$plot1 <- renderPlot({
     new_data <- 0
+    # extract all energy sources or specified energy source by specified input
     if (input$select == "All") {
       new_data <- subset(data_w_to_L, data_w_to_L$variable$X2 != "Total")
     } else {
@@ -305,13 +310,14 @@ server = function(input, output) {
     ggplot(data=new_data, aes(x=variable$X1, y=value, fill=variable$X2)) +
       geom_bar(position="stack", stat="identity") +
       scale_y_continuous(labels = function(y) paste0(y / 1e6, " Million")) +
-      labs(x="Time", y= "Production Amount", title="Production Vs Time") + 
+      labs(x="Time", y= "Amount", title="Energy Production in Amounts", subtitle="Amount vs. Time") + 
       scale_fill_manual(values=myColors, 
                         name="Energy Source(s)")
   })
-  
+  # Render the 2nd plot in part 1
   output$plot2 <- renderPlot({
     new_data <- 0
+    # extract all energy sources or specified energy source by specified input
     if (input$select == "All") {
       new_data <- subset(percents_w_to_L, percents_w_to_L$variable$X2 != "Total")
     } else {
@@ -322,13 +328,14 @@ server = function(input, output) {
     ggplot(data=new_data, aes(x=variable$X1, y=value, fill=factor(variable$X2))) +
       geom_bar(position="fill", stat="identity") +
       scale_y_continuous(labels = scales::percent_format()) +
-      labs(x="Time", y= "Production Percent of Year's Total", title="Production Percent of Year's Total Vs Time") +
+      labs(x="Time", y= "Percent", title="Percent of total Energy Production", subtitle="Percent vs. Time") +  
       scale_fill_manual(values=myColors, 
                         name="Energy Source(s)")
   })
-  
+  # Render the 3rd plot in part 1
   output$plot3 <- renderPlot({
     new_data <- 0
+    # extract all energy sources or specified energy source by specified input
     if (input$select == "All") {
       new_data <- subset(data_w_to_L, data_w_to_L$variable$X2 != "Total")
     } else {
@@ -339,14 +346,14 @@ server = function(input, output) {
     ggplot(data=new_data, aes(x=variable$X1, y=value, colour=variable$X2)) +
       stat_summary(fun=sum, geom="line") +
       scale_y_continuous(labels = function(y) paste0(y / 1e6, " Million")) +
-      labs(x="Time", y= "Production Amount", title="Production Amount Vs Time") +
+      labs(x="Time", y= "Amount", title="Energy Production in Amounts", subtitle="Amount vs. Time") + 
       scale_color_manual(values=myColors, 
                          name="Energy Source(s)")
   })
-  
+  # Render the 4th plot in part 1
   output$plot4 <- renderPlot({
     new_data <- 0
-    
+    # extract all energy sources or specified energy source by specified input
     if (input$select == "All") {
       new_data <- subset(percents_w_to_L, percents_w_to_L$variable$X2 != "Total")
     } else {
@@ -357,15 +364,16 @@ server = function(input, output) {
     ggplot(data=new_data, aes(x=variable$X1, y=value, colour=variable$X2)) +
       stat_summary(fun=sum, geom="line") +
       scale_y_continuous(labels = scales::percent_format()) +
-      labs(x="Time", y= "Production Percent of Year's Total", title="Production Percent of Year's Total Vs Time", 
-           legend="Energy Source(s)") +
+      labs(x="Time", y= "Percent", title="Percent of total Energy Production", subtitle="Percent vs. Time") +
       scale_color_manual(values=myColors, 
                          name="Energy Source(s)")
   })
+  # Render the amount and percents table in part 1 with the below requirements:
   # Create table of raw numbers for the amount of each energy source per year from 1990 - 2019
   # Create table of raw numbers for the percent of the total production for each energy source per year from 1990 - 2019
   output$mytable <- DT::renderDataTable({
     new_data <- 0
+    # extract all energy sources or specified energy source by specified input
     if (input$tab == "Amounts") {
       new_data <- data_w_to_L
     } else {
@@ -377,7 +385,7 @@ server = function(input, output) {
     } else {
       new_data <- subset(new_data, new_data$variable$X2 == input$select)
     }
-    
+    # subset appropriately
     new_data$value <- format(new_data$value, big.mark=",",scientific=FALSE)
     new_data_l_to_w <- dcast(new_data, STATE ~ variable$X1 + variable$X2, value.var = "value", drop = TRUE)
     
@@ -389,256 +397,272 @@ server = function(input, output) {
                                  columnDefs = list(list(className = 'dt-right', targets="_all"))))
     
   })
-  
+  # Render the 1st plot for region 1
   output$compR1_plot1 <- renderPlot({
     new_data <- data_w_to_L
+    # extract all energy sources or specified energy source by specified input
     if (input$select_compR1_categories == "All") {
       new_data <- subset(new_data, new_data$variable$X2 != "Total")
     } else {
       new_data <- subset(new_data, new_data$variable$X2 == input$select_compR1_categories)
     }
-    
+    # subset appropriately
     new_data <- subset(new_data, new_data$STATE == input$select_compR1_states)
     new_data <- subset(new_data, new_data$variable$X1 == input$select_compR1_years)
     
     ggplot(data=new_data, aes(x=variable$X1, y=value, fill=variable$X2)) +
       geom_bar(position="stack", stat="identity") +
       scale_y_continuous(labels = function(y) paste0(y / 1e6, " Million")) +
-      labs(x="Time", y= "Production Amount", title="Production Amount Vs Time") +
+      labs(x="Time", y= "Amount", title="Energy Production in Amounts", subtitle="Amount vs. Time") + 
       scale_fill_manual(values=myColors, 
                         name="Energy Source(s)")
     
   })
-  
+  # Render the 2nd plot for region 1
   output$compR1_plot2 <- renderPlot({
     new_data <- percents_w_to_L
     pos <- "identity"
+    # extract all energy sources or specified energy source by specified input
     if (input$select_compR1_categories == "All") {
       new_data <- subset(new_data, new_data$variable$X2 != "Total")
       pos <- "stack"
     } else {
       new_data <- subset(new_data, new_data$variable$X2 == input$select_compR1_categories)
     }
+    # subset appropriately
     new_data <- subset(new_data, new_data$STATE == input$select_compR1_states)
     new_data <- subset(new_data, new_data$variable$X1 == input$select_compR1_years)
-    print(new_data)
     
     ggplot(data=new_data, aes(x=variable$X1, y=value, fill=factor(variable$X2))) +
       geom_bar(position=pos, stat="identity") +
       scale_y_continuous(labels = scales::percent_format()) +
-      labs(x="Time", y= "Production Percent of Year's Total", title="Production Percent of Year's Total Vs Time", 
-           legend="Energy Source(s)") +
+      labs(x="Time", y= "Percent", title="Percent of total Energy Production", subtitle="Percent vs. Time") +
       scale_fill_manual(values=myColors, 
                         name="Energy Source(s)")
   })
-  
+  # Render the 3rd plot for region 1
   output$compR1_plot3 <- renderPlot({
     new_data <- data_w_to_L
+    # extract all energy sources or specified energy source by specified input
     if (input$select_compR1_categories == "All") {
       new_data <- subset(new_data, new_data$variable$X2 != "Total")
     } else {
       new_data <- subset(new_data, new_data$variable$X2 == input$select_compR1_categories)
     }
+    # subset appropriately
     new_data <- subset(new_data, new_data$STATE == input$select_compR1_states)
     new_data <- subset(new_data, new_data$variable$X1 == input$select_compR1_years)
     
     ggplot(data=new_data, aes(x=variable$X1, y=value, colour=variable$X2)) +
       stat_summary(fun=sum, geom="point") +
       scale_y_continuous(labels = function(y) paste0(y / 1e6, " Million")) +
-      labs(x="Time", y= "Production Amount", title="Production Amount Vs Time") +
+      labs(x="Time", y= "Amount", title="Energy Production in Amounts", subtitle="Amount vs. Time") + 
       scale_color_manual(values=myColors, 
                          name="Energy Source(s)")
   })
-  
+  # Render the 4th plot for region 1
   output$compR1_plot4 <- renderPlot({
     new_data <- percents_w_to_L
+    # extract all energy sources or specified energy source by specified input
     if (input$select_compR1_categories == "All") {
       new_data <- subset(new_data, new_data$variable$X2 != "Total")
     } else {
       new_data <- subset(new_data, new_data$variable$X2 == input$select_compR1_categories)
     }
+    # subset appropriately
     new_data <- subset(new_data, new_data$STATE == input$select_compR1_states)
     new_data <- subset(new_data, new_data$variable$X1 == input$select_compR1_years)
     
     ggplot(data=new_data, aes(x=variable$X1, y=value, colour=variable$X2)) +
       stat_summary(fun=sum, geom="point") +
       scale_y_continuous(labels = scales::percent_format()) +
-      labs(x="Time", y= "Production Percent of Year's Total", title="Production Percent of Year's Total Vs Time", 
-           legend="Energy Source(s)") +
+      labs(x="Time", y= "Percent", title="Percent of total Energy Production", subtitle="Percent vs. Time") +
       scale_color_manual(values=myColors, 
                          name="Energy Source(s)")
   })
-  
-  output$compR1_dt1 <- renderPlot({
+  # Render the 1st table (Amounts) for region 1
+  output$compR1_dt1 <- renderDataTable({
     new_data <- data_w_to_L
+    # extract all energy sources or specified energy source by specified input
     if (input$select_compR1_categories == "All") {
       new_data <- subset(new_data, new_data$variable$X2 != "Total")
     } else {
       new_data <- subset(new_data, new_data$variable$X2 == input$select_compR1_categories)
     }
+    # subset appropriately
     new_data <- subset(new_data, new_data$STATE == input$select_compR1_states)
     new_data <- subset(new_data, new_data$variable$X1 == input$select_compR1_years)
-    
+    # format the numbers then convert long format to wide format
     new_data$value <- format(new_data$value, big.mark=",",scientific=FALSE)
-    
     new_data_l_to_w <- dcast(new_data, STATE ~ variable$X1 + variable$X2, value.var = "value", drop = TRUE)
     
     DT::datatable(new_data_l_to_w, rownames = FALSE,
                   options = list(paging=FALSE,
-                                 scrollY = "500px",
-                                 scrollX = "500px",
+                                 scrollY = "200px",
+                                 scrollX = "200px",
                                  targets = "_all",
                                  columnDefs = list(list(className = 'dt-right', targets="_all"))))
     
   })
-  
-  output$compR1_dt2 <- renderPlot({
+  # Render the 2nd table (Percents) for region 1
+  output$compR1_dt2 <- renderDataTable({
     new_data <- percents_w_to_L
+    # extract all energy sources or specified energy source by specified input
     if (input$select_compR1_categories == "All") {
       new_data <- subset(new_data, new_data$variable$X2 != "Total")
     } else {
       new_data <- subset(new_data, new_data$variable$X2 == input$select_compR1_categories)
     }
+    
+    # subset appropriately
     new_data <- subset(new_data, new_data$STATE == input$select_compR1_states)
     new_data <- subset(new_data, new_data$variable$X1 == input$select_compR1_years)
-    
+    # format the numbers then convert long format to wide format
     new_data$value <- format(new_data$value, big.mark=",",scientific=FALSE)
-    
     new_data_l_to_w <- dcast(new_data, STATE ~ variable$X1 + variable$X2, value.var = "value", drop = TRUE)
     
     DT::datatable(new_data_l_to_w, rownames = FALSE,
                   options = list(paging=FALSE,
-                                 scrollY = "500px",
-                                 scrollX = "500px",
+                                 scrollY = "200px",
+                                 scrollX = "200px",
                                  targets = "_all",
                                  columnDefs = list(list(className = 'dt-right', targets="_all"))))
   })
-  
+  # Render the 1st plot for region 2
   output$compR2_plot1 <- renderPlot({
     new_data <- data_w_to_L
+    # extract all energy sources or specified energy source by specified input
     if (input$select_compR2_categories == "All") {
       new_data <- subset(new_data, new_data$variable$X2 != "Total")
     } else {
       new_data <- subset(new_data, new_data$variable$X2 == input$select_compR2_categories)
     }
+    # subset appropriately
     new_data <- subset(new_data, new_data$STATE == input$select_compR2_states)
     new_data <- subset(new_data, new_data$variable$X1 == input$select_compR2_years)
     
     ggplot(data=new_data, aes(x=variable$X1, y=value, fill=variable$X2)) +
       geom_bar(position="stack", stat="identity") +
       scale_y_continuous(labels = function(y) paste0(y / 1e6, " Million")) +
-      labs(x="Time", y= "Production Amount", title="Production Amount Vs Time") +
+      labs(x="Time", y= "Amount", title="Energy Production in Amounts", subtitle="Amount vs. Time") + 
       scale_fill_manual(values=myColors, 
                         name="Energy Source(s)")
     
   })
-  
+  # Render the 2nd plot for region 2
   output$compR2_plot2 <- renderPlot({
     new_data <- percents_w_to_L
     pos <- "identity"
+    # extract all energy sources or specified energy source by specified input
     if (input$select_compR2_categories == "All") {
       new_data <- subset(new_data, new_data$variable$X2 != "Total")
       pos <-"stack"
     } else {
       new_data <- subset(new_data, new_data$variable$X2 == input$select_compR2_categories)
     }
+    # subset appropriately
     new_data <- subset(new_data, new_data$STATE == input$select_compR2_states)
     new_data <- subset(new_data, new_data$variable$X1 == input$select_compR2_years)
     
     ggplot(data=new_data, aes(x=variable$X1, y=value, fill=factor(variable$X2))) +
       geom_bar(position=pos, stat="identity") +
       scale_y_continuous(labels = scales::percent_format()) +
-      labs(x="Time", y= "Production Percent of Year's Total", title="Production Percent of Year's Total Vs Time", 
-           legend="Energy Source(s)") +
+      labs(x="Time", y= "Percent", title="Percent of total Energy Production", subtitle="Percent vs. Time") +
       scale_fill_manual(values=myColors, 
                         name="Energy Source(s)")
   })
-  
+  # Render the 3rd plot for region 2
   output$compR2_plot3 <- renderPlot({
     new_data <- data_w_to_L
+    # extract all energy sources or specified energy source by specified input
     if (input$select_compR2_categories == "All") {
       new_data <- subset(new_data, new_data$variable$X2 != "Total")
     } else {
       new_data <- subset(new_data, new_data$variable$X2 == input$select_compR2_categories)
     }
+    # subset appropriately
     new_data <- subset(new_data, new_data$STATE == input$select_compR2_states)
     new_data <- subset(new_data, new_data$variable$X1 == input$select_compR2_years)
     
     ggplot(data=new_data, aes(x=variable$X1, y=value, colour=variable$X2)) +
       stat_summary(fun=sum, geom="point") +
       scale_y_continuous(labels = function(y) paste0(y / 1e6, " Million")) +
-      labs(x="Time", y= "Production Amount", title="Production Amount Vs Time") +
+      labs(x="Time", y= "Amount", title="Energy Production in Amounts", subtitle="Amount vs. Time") + 
       scale_color_manual(values=myColors, 
                          name="Energy Source(s)")
   })
-  
+  # Render the 4th plot for region 2
   output$compR2_plot4 <- renderPlot({
     new_data <- percents_w_to_L
+    # extract all energy sources or specified energy source by specified input
     if (input$select_compR2_categories == "All") {
       new_data <- subset(new_data, new_data$variable$X2 != "Total")
     } else {
       new_data <- subset(new_data, new_data$variable$X2 == input$select_compR2_categories)
     }
+    # subset appropriately
     new_data <- subset(new_data, new_data$STATE == input$select_compR2_states)
     new_data <- subset(new_data, new_data$variable$X1 == input$select_compR2_years)
     
     ggplot(data=new_data, aes(x=variable$X1, y=value, colour=variable$X2)) +
       stat_summary(fun=sum, geom="point") +
       scale_y_continuous(labels = scales::percent_format()) +
-      labs(x="Time", y= "Production Percent of Year's Total", title="Production Percent of Year's Total Vs Time", 
-           legend="Energy Source(s)") +
+      labs(x="Time", y= "Percent", title="Percent of total Energy Production", subtitle="Percent vs. Time") +
       scale_color_manual(values=myColors, 
                          name="Energy Source(s)")
   })
-  
-  output$compR2_dt1 <- renderPlot({
+  # Render the 1st table (Amounts) for region 2
+  output$compR2_dt1 <- renderDataTable({
     new_data <- data_w_to_L
+    # extract all energy sources or specified energy source by specified input
     if (input$select_compR2_categories == "All") {
       new_data <- subset(new_data, new_data$variable$X2 != "Total")
     } else {
       new_data <- subset(new_data, new_data$variable$X2 == input$select_compR2_categories)
     }
+    # subset appropriately
     new_data <- subset(new_data, new_data$STATE == input$select_compR2_states)
     new_data <- subset(new_data, new_data$variable$X1 == input$select_compR2_years)
-    
+    # format the numbers then convert long format to wide format
     new_data$value <- format(new_data$value, big.mark=",",scientific=FALSE)
-    
     new_data_l_to_w <- dcast(new_data, STATE ~ variable$X1 + variable$X2, value.var = "value", drop = TRUE)
     
     DT::datatable(new_data_l_to_w, rownames = FALSE,
                   options = list(paging=FALSE,
-                                 scrollY = "500px",
-                                 scrollX = "500px",
+                                 scrollY = "200px",
+                                 scrollX = "200px",
                                  targets = "_all",
                                  columnDefs = list(list(className = 'dt-right', targets="_all"))))
     
   })
-  
-  output$compR2_dt2 <- renderPlot({
+  # Render the 2nd table (Percents) for region 2
+  output$compR2_dt2 <- renderDataTable({
     new_data <- percents_w_to_L
+    # extract all energy sources or specified energy source by specified input
     if (input$select_compR2_categories == "All") {
       new_data <- subset(new_data, new_data$variable$X2 != "Total")
     } else {
       new_data <- subset(new_data, new_data$variable$X2 == input$select_compR2_categories)
     }
+    # subset appropriatly
     new_data <- subset(new_data, new_data$STATE == input$select_compR2_states)
     new_data <- subset(new_data, new_data$variable$X1 == input$select_compR2_years)
-    
+    # format the numbers then convert long format to wide format
     new_data$value <- format(new_data$value, big.mark=",",scientific=FALSE)
-    
     new_data_l_to_w <- dcast(new_data, STATE ~ variable$X1 + variable$X2, value.var = "value", drop = TRUE)
     
     DT::datatable(new_data_l_to_w, rownames = FALSE,
                   options = list(paging=FALSE,
-                                 scrollY = "500px",
-                                 scrollX = "500px",
+                                 scrollY = "200px",
+                                 scrollX = "200px",
                                  targets = "_all",
                                  columnDefs = list(list(className = 'dt-right', targets="_all"))))
   })
   
-  
+  # Render the heat map for region 1
   output$geoR1_hm <- renderPlot({
     new_data <- data_w_to_L
+    # extract all energy sources or specified energy source by specified input
     if (input$select_geoR1_categories == "All") {
       new_data <- subset(new_data, new_data$variable$X2 != "Total")
     } else {
@@ -646,17 +670,20 @@ server = function(input, output) {
     }
     
     new_data <- subset(new_data, new_data$variable$X1 == input$select_geoR1_years)
-    new_data <- as.data.frame.matrix(new_data) 
-    colnames(new_data)[colnames(new_data) == "STATE"] <- "state"
+    new_data <- as.data.frame.matrix(new_data)                   # usmap requires data to be in data frame format
+    colnames(new_data)[colnames(new_data) == "STATE"] <- "state" # state column name is required by usmap
     
-    plot_usmap(data = new_data, values = "value", color = "black", labels=TRUE) + 
-      scale_fill_continuous(name = input$select_geoR1_categories, label = scales::comma) + 
+    color <- myColors[input$select_geoR1_categories]
+    
+    plot_usmap(data = new_data, values = "value", color = color, labels=TRUE) + 
+      scale_fill_continuous(low = "white", high = color, name = input$select_geoR1_categories, label = scales::comma) + 
       theme(legend.position = "right") +
-      labs(title = "Region 1 Energy Production", subtitle = new_data$variable$X1)
+      labs(title = "Region 1 Energy Production", subtitle = new_data$variable$X1, caption = "** Grey states signify missing data")
   })
-  
+  # Render the heat map for region 2
   output$geoR2_hm <- renderPlot({
     new_data <- data_w_to_L
+    # extract all energy sources or specified energy source by specified input
     if (input$select_geoR2_categories == "All") {
       new_data <- subset(new_data, new_data$variable$X2 != "Total")
     } else {
@@ -664,17 +691,20 @@ server = function(input, output) {
     }
     
     new_data <- subset(new_data, new_data$variable$X1 == input$select_geoR2_years)
-    new_data <- as.data.frame.matrix(new_data) 
-    colnames(new_data)[colnames(new_data) == "STATE"] <- "state"
+    new_data <- as.data.frame.matrix(new_data)                   # usmap requires data to be in data frame format
+    colnames(new_data)[colnames(new_data) == "STATE"] <- "state" # state column name is required by usmap
     
-    plot_usmap(data = new_data, values = "value", color = "black", labels=TRUE) + 
-      scale_fill_continuous(name = input$select_geoR2_categories, label = scales::comma) + 
+    color <- myColors[input$select_geoR2_categories]
+    
+    plot_usmap(data = new_data, values = "value", color = color, labels=TRUE) + 
+      scale_fill_continuous(low = "white", high = color, name = input$select_geoR2_categories, label = scales::comma) + 
       theme(legend.position = "right") +
-      labs(title = "Region 2 Energy Production", subtitle = new_data$variable$X1)
+      labs(title = "Region 2 Energy Production", subtitle = new_data$variable$X1, caption = "*** Grey states signify missing data")
   })
-  
+  # Render the heat map for region 3
   output$geoR3_hm <- renderPlot({
     new_data <- data_w_to_L
+    # extract all energy sources or specified energy source by specified input
     if (input$select_geoR3_categories == "All") {
       new_data <- subset(new_data, new_data$variable$X2 != "Total")
     } else {
@@ -682,17 +712,20 @@ server = function(input, output) {
     }
     
     new_data <- subset(new_data, new_data$variable$X1 == input$select_geoR3_years)
-    new_data <- as.data.frame.matrix(new_data) 
-    colnames(new_data)[colnames(new_data) == "STATE"] <- "state"
+    new_data <- as.data.frame.matrix(new_data)                   # usmap requires data to be in data frame format
+    colnames(new_data)[colnames(new_data) == "STATE"] <- "state" # state column name is required by usmap
     
-    plot_usmap(data = new_data, values = "value", color = "black", labels=TRUE) + 
-      scale_fill_continuous(name = input$select_geoR3_categories, label = scales::comma) + 
+    color <- myColors[input$select_geoR3_categories]
+    
+    plot_usmap(data = new_data, values = "value", color = color, labels=TRUE) + 
+      scale_fill_continuous(low = "white", high = color, name = input$select_geoR3_categories, label = scales::comma) + 
       theme(legend.position = "right") +
-      labs(title = "Region 3 Energy Production", subtitle = new_data$variable$X1)
+      labs(title = "Region 3 Energy Production", subtitle = new_data$variable$X1, caption = "** Grey states signify missing data")
   })
-  
+  # Render the heat map for region 4
   output$geoR4_hm <- renderPlot({
     new_data <- data_w_to_L
+    # extract all energy sources or specified energy source by specified input
     if (input$select_geoR4_categories == "All") {
       new_data <- subset(new_data, new_data$variable$X2 != "Total")
     } else {
@@ -700,13 +733,16 @@ server = function(input, output) {
     }
     
     new_data <- subset(new_data, new_data$variable$X1 == input$select_geoR4_years)
-    new_data <- as.data.frame.matrix(new_data) 
-    colnames(new_data)[colnames(new_data) == "STATE"] <- "state"
+    new_data <- as.data.frame.matrix(new_data)                   # usmap requires data to be in data frame format
+    colnames(new_data)[colnames(new_data) == "STATE"] <- "state" # state column name is required by usmap
     
-    plot_usmap(data = new_data, values = "value", color = "black", labels=TRUE) + 
-      scale_fill_continuous(name = input$select_geoR4_categories, label = scales::comma) + 
+    
+    color <- myColors[input$select_geoR4_categories]
+    
+    plot_usmap(data = new_data, values = "value", color=color, labels=TRUE) + 
+      scale_fill_continuous(low = "white", high = color, name = input$select_geoR4_categories, label = scales::comma) + 
       theme(legend.position = "right") +
-      labs(title = "Region 4 Energy Production", subtitle = new_data$variable$X1)
+      labs(title = "Region 4 Energy Production", subtitle = new_data$variable$X1, caption = "** Grey states signify missing data")
   })
 }
 
